@@ -33,7 +33,7 @@
 
 # Save trace setting
 XTRACE=$(set +o | grep xtrace)
-set +o xtrace
+set -o xtrace
 
 # builds transport url string
 function _get_amqp1_transport_url {
