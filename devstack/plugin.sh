@@ -225,6 +225,7 @@ if is_service_enabled amqp1; then
     # you must overwrite the iniset_rpc_backend function so that when
     # that's passed around the correct settings files are made.
     function iniset_rpc_backend {
+        echo_summary "AMQP1 iniset_rpc_backend"
         _iniset_${AMQP1_SERVICE}_backend $@
     }
     function get_transport_url {
