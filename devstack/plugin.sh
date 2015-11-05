@@ -44,6 +44,7 @@ function _get_amqp1_transport_url {
 # install packages necessary for support of the oslo.messaging AMQP
 # 1.0 driver
 function _install_pyngus {
+    echo_summary "_install_pyngus"
     # Install pyngus client API
     if is_fedora; then
         # TODO(kgiusti) due to a bug in the way pip installs wheels,
@@ -69,7 +70,7 @@ function _remove_pyngus {
 
 # Set up the various configuration files used by the qpidd broker
 function _configure_qpid {
-
+    echo_summary "_configure_qpid"
     # the location of the configuration files have changed since qpidd 0.14
     local qpid_conf_file
     if [ -e /etc/qpid/qpidd.conf ]; then
@@ -145,7 +146,7 @@ EOF
 
 # install and configure the qpidd broker
 function _install_qpid_backend {
-
+    echo_summary "_install_qpid_backend"
     if is_fedora; then
         # expects epel is already added to the yum repos
         install_package cyrus-sasl-lib
@@ -200,6 +201,8 @@ function _iniset_qpid_backend {
     local file=$2
     local section=${3:-DEFAULT}
 
+    echo_summary "_iniset_qpid_backend $package $file $section"
+
     iniset $file $section rpc_backend "amqp"
     # @TODO(kgiusti) why is "qpid_" part of the setting's name?  Why isn't this generic??
     iniset $file $section qpid_hostname ${AMQP1_HOST}
@@ -211,6 +214,7 @@ function _iniset_qpid_backend {
 
 
 if is_service_enabled amqp1; then
+    echo_summary "AMQP1 define callouts"
     # @TODO(kgiusti) hardcode qpid for now, add other service
     # types as support is provided
     if [ "$AMQP1_SERVICE" != "qpid" ]; then
@@ -233,6 +237,7 @@ fi
 
 # check for amqp1 service
 if is_service_enabled amqp1; then
+    echo_summary "AMQP1 stack command $1 $2"
     if [[ "$1" == "stack" && "$2" == "pre-install" ]]; then
         # nothing needed here
         :
