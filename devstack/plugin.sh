@@ -133,14 +133,19 @@ EOF
     if ! $QPIDD --help | grep -q "queue-patterns"; then
         exit_distro_not_supported "qpidd with AMQP 1.0 support"
     fi
+    local log_file=$LOGDIR/qpidd.log
     if ! grep -q "queue-patterns=exclusive" $qpid_conf_file; then
         cat <<EOF | sudo tee --append $qpid_conf_file
 queue-patterns=exclusive
 queue-patterns=unicast
 topic-patterns=broadcast
-log-to-file=$LOGDIR/qpidd.log 
+log-enable=info+
+log-to-file=$log_file
+log-to-syslog=yes
 EOF
     fi
+    sudo touch $log_file
+    sudo chmod a+rw $log_file  # qpidd user can write to it
 }
 
 
