@@ -66,6 +66,14 @@ function _remove_pyngus {
 # Set up the various configuration files used by the qpidd broker
 function _configure_qpid {
 
+    # Ensure that the version of the broker can support AMQP 1.0 and
+    # configure the queue and topic address patterns used by
+    # oslo.messaging.
+    QPIDD=$(type -p qpidd)
+    if ! $QPIDD --help | grep -q "queue-patterns"; then
+        exit_distro_not_supported "qpidd with AMQP 1.0 support"
+    fi
+
     # the location of the configuration files have changed since qpidd 0.14
     local qpid_conf_file
     if [ -e /etc/qpid/qpidd.conf ]; then
@@ -76,20 +84,21 @@ function _configure_qpid {
         exit_distro_not_supported "qpidd.conf file not found!"
     fi
 
-    # ensure that the qpidd service can read its config
+    # reset to a clean configuration, and ensure that the qpidd
+    # service can read its config
+    sudo rm -f $qpid_conf_file
+    sudo touch $qpid_conf_file
     sudo chmod o+r $qpid_conf_file
 
-    # force the ACL file to a known location
+    # force the ACL file to a known location and state
     local qpid_acl_file=/etc/qpid/qpidd.acl
-    if [ ! -e $qpid_acl_file ]; then
-        sudo mkdir -p -m 755 `dirname $qpid_acl_file`
-        sudo touch $qpid_acl_file
-        sudo chmod o+r $qpid_acl_file
-    fi
-    sudo sed -i.bak '/^acl-file=/d' $qpid_conf_file
+    sudo mkdir -p -m 755 `dirname $qpid_acl_file`
+    sudo rm -f $qpid_acl_file
+    sudo touch $qpid_acl_file
+    sudo chmod o+r $qpid_acl_file
+
     echo "acl-file=$qpid_acl_file" | sudo tee --append $qpid_conf_file
 
-    sudo sed -i '/^auth=/d' $qpid_conf_file
     if [ -z "$AMQP1_USERNAME" ]; then
         # no QPID user configured, so disable authentication
         # and access control
@@ -110,27 +119,29 @@ group admin ${AMQP1_USERNAME}@QPID
 acl allow admin all
 acl deny all all
 EOF
-        # Add user to SASL database
+        # Configure the SASL: enable PLAIN and add a user to the database
         local sasl_conf_file=/etc/sasl2/qpidd.conf
         sudo sed -i.bak '/PLAIN/!s/mech_list: /mech_list: PLAIN /' $sasl_conf_file
         local sasl_db=`sudo grep sasldb_path $sasl_conf_file | cut -f 2 -d ":" | tr -d [:blank:]`
         if [ ! -e $sasl_db ]; then
             sudo mkdir -p -m 755 `dirname $sasl_db`
         fi
+        sudo rm -f $sasl_db
         echo $AMQP1_PASSWORD | sudo saslpasswd2 -c -p -f $sasl_db -u QPID $AMQP1_USERNAME
         sudo chmod o+r $sasl_db
+
+        # set the SASL service name if the version of qpidd supports it:
+        if $QPIDD --help | grep -q "sasl-service-name"; then
+            cat <<EOF | sudo tee --append $qpid_conf_file
+sasl-service-name=amqp
+EOF
+        fi
     fi
 
-    # Ensure that the version of the broker can support AMQP 1.0 and
     # configure the queue and topic address patterns used by
     # oslo.messaging.
-    QPIDD=$(type -p qpidd)
-    if ! $QPIDD --help | grep -q "queue-patterns"; then
-        exit_distro_not_supported "qpidd with AMQP 1.0 support"
-    fi
     local log_file=$LOGDIR/qpidd.log
-    if ! grep -q "queue-patterns=exclusive" $qpid_conf_file; then
-        cat <<EOF | sudo tee --append $qpid_conf_file
+    cat <<EOF | sudo tee --append $qpid_conf_file
 queue-patterns=exclusive
 queue-patterns=unicast
 topic-patterns=broadcast
@@ -138,7 +149,6 @@ log-enable=info+
 log-to-file=$log_file
 log-to-syslog=yes
 EOF
-    fi
     sudo touch $log_file
     sudo chmod a+rw $log_file  # qpidd user can write to it
 }
