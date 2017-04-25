@@ -65,7 +65,7 @@ function _parse_transport_url {
     local port    # port #
 
     # extract [user:pass@]host:port
-    uphp=$(echo $TRANSPORT_URL | sed -e "s#^[^:]*://\([^/]*\).*#\1#")
+    uphp=$(echo $1 | sed -e "s#^[^:]*://\([^/]*\).*#\1#")
     # parse out username + password if present:
     user=""
     passwd=""
