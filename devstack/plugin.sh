@@ -57,21 +57,29 @@
 
 # parse URL, extracting host, port, username, password
 function _parse_transport_url {
+    local uphp    # user+password+host+port
+    local user    # username
+    local passwd  # password
+    local hostport  # host+port
+    local host    # hostname
+    local port    # port #
+
     # extract [user:pass@]host:port
-    local uphp=$(echo $TRANSPORT_URL | sed -e "s#^[^:]*://\([^/]*\).*#\1#")
+    uphp=$(echo $TRANSPORT_URL | sed -e "s#^[^:]*://\([^/]*\).*#\1#")
     # parse out username + password if present:
-    local user=""
-    local passwd=""
+    user=""
+    passwd=""
     if [[ "$userhostport" =~ .+@.+ ]]; then
+        local passhostport
         user=$(echo $userhostport | sed -e "s#^\([^:]*\).*#\1#")
-        local passhostport=$(echo $userhostport | sed -e "s#$user:##")
+        passhostport=$(echo $userhostport | sed -e "s#$user:##")
         passwd=$(echo $passhostport | sed -e "s#^\([^@]*\).*#\1#")
-        local hostport=$(echo $passhostport | sed -e "s#$passwd@##")
+        hostport=$(echo $passhostport | sed -e "s#$passwd@##")
     else
-        local hostport=$userhostport
+        hostport=$userhostport
     fi
-    local host=$(echo $hostport | cut -d: -f1)
-    local port=$(echo $hostport | cut -d: -f2)
+    host=$(echo $hostport | cut -d: -f1)
+    port=$(echo $hostport | cut -d: -f2)
 
     # field 1   2     3     4
     echo "$host $port $user $passwd"
@@ -117,7 +125,8 @@ function _remove_pyngus {
 # Set up the various configuration files used by the qpidd broker
 function _configure_qpid {
 
-    local url=_parse_transport_url($1)
+    local url
+    url=_parse_transport_url $1
 
     # the location of the configuration files have changed since qpidd 0.14
     local qpid_conf_file
@@ -133,7 +142,8 @@ function _configure_qpid {
     sudo chmod o+r $qpid_conf_file
 
     # force the ACL file to a known location
-    local qpid_acl_file=/etc/qpid/qpidd.acl
+    local qpid_acl_file
+    qpid_acl_file=/etc/qpid/qpidd.acl
     if [ ! -e $qpid_acl_file ]; then
         sudo mkdir -p -m 755 `dirname $qpid_acl_file`
         sudo touch $qpid_acl_file
@@ -141,7 +151,8 @@ function _configure_qpid {
     fi
     echo "acl-file=$qpid_acl_file" | sudo tee $qpid_conf_file
 
-    local username=$(echo url | cut -d' ' -f3)
+    local username
+    username=$(echo url | cut -d' ' -f3)
     if [ -z "$username" ]; then
         # no QPID user configured, so disable authentication
         # and access control
@@ -153,7 +164,8 @@ EOF
         # Configure qpidd to use PLAIN authentication, and add
         # $username to the ACL:
         echo "auth=yes" | sudo tee --append $qpid_conf_file
-        local passwd=$(echo url | cut -d' ' -f4)
+        local passwd
+        passwd=$(echo url | cut -d' ' -f4)
         if [ -z "$passwd" ]; then
             read_password password "ENTER A PASSWORD FOR QPID USER $username"
         fi
@@ -164,7 +176,8 @@ acl allow admin all
 acl deny all all
 EOF
         # Add user to SASL database
-        local sasl_conf_file=/etc/sasl2/qpidd.conf
+        local sasl_conf_file
+        sasl_conf_file=/etc/sasl2/qpidd.conf
         cat <<EOF | sudo tee $sasl_conf_file
 pwcheck_method: auxprop
 auxprop_plugin: sasldb
@@ -189,7 +202,8 @@ EOF
     if ! $QPIDD --help | grep -q "queue-patterns"; then
         exit_distro_not_supported "qpidd with AMQP 1.0 support"
     fi
-    local log_file=$LOGDIR/qpidd.log
+    local log_file
+    log_file=$LOGDIR/qpidd.log
     cat <<EOF | sudo tee --append $qpid_conf_file
 queue-patterns=exclusive
 queue-patterns=unicast
@@ -215,7 +229,8 @@ EOF
 # Set up the various configuration files used by the qpid-dispatch-router (qdr)
 function _configure_qdr {
 
-    local url=_parse_transport_url($1)
+    local url
+    url=_parse_transport_url $1
 
     # the location of the configuration is /etc/qpid-dispatch
     local qdr_conf_file
@@ -244,14 +259,16 @@ router {
 EOF
 
     # Create a listener for incoming connect to the router
-    local port=$(echo url | cut -d' ' -f2)
+    local port
+    port=$(echo url | cut -d' ' -f2)
     cat <<EOF | sudo tee --append $qdr_conf_file
 listener {
     addr: 0.0.0.0
     port: ${port}
     role: normal
 EOF
-    local username=$(echo url | cut -d' ' -f3)
+    local username
+    username=$(echo url | cut -d' ' -f3)
     if [ -z "$username" ]; then
         #no user configured, so disable authentication
         cat <<EOF | sudo tee --append $qdr_conf_file
@@ -261,7 +278,8 @@ EOF
 EOF
     else
         # configure to use PLAIN authentication
-        local passwd=$(echo url | cut -d' ' -f4)
+        local passwd
+        passwd=$(echo url | cut -d' ' -f4)
         if [ -z "$passwd" ]; then
             read_password passwd "ENTER A PASSWORD FOR QPID DISPATCH USER $username"
         fi
@@ -271,7 +289,8 @@ EOF
 
 EOF
         # Add user to SASL database
-        local sasl_conf_file=/etc/sasl2/qdrouterd.conf
+        local sasl_conf_file
+        sasl_conf_file=/etc/sasl2/qdrouterd.conf
         cat <<EOF | sudo tee $sasl_conf_file
 pwcheck_method: auxprop
 auxprop_plugin: sasldb
@@ -337,8 +356,8 @@ address {
 
 EOF
 
-    local log_file=$LOGDIR/qdrouterd.log
-
+    local log_file
+    log_file=$LOGDIR/qdrouterd.log
     sudo touch $log_file
     sudo chmod a+rw $log_file  # qdrouterd user can write to it
 
@@ -359,20 +378,22 @@ EOF
 # (qpidd broker and optionally dispatch-router for hybrid)
 function _install_amqp1_backend {
 
+    local qdrouterd_package
+    local qpidd_package
     if is_fedora; then
         # expects epel is already added to the yum repos
         install_package cyrus-sasl-lib
         install_package cyrus-sasl-plain
-        local _qdrouterd_package="qpid-dispatch-router"
-        local _qpidd_package="qpid-cpp-server"
+        qdrouterd_package="qpid-dispatch-router"
+        qpidd_package="qpid-cpp-server"
     elif is_ubuntu; then
         install_package sasl2-bin
         # newer qpidd and proton only available via the qpid PPA
         sudo add-apt-repository -y ppa:qpid/released
         REPOS_UPDATED=False
         update_package_repo
-        local _qdrouterd_package="qdrouterd"
-        local _qpidd_package="qpidd"
+        qdrouterd_package="qdrouterd"
+        qpidd_package="qpidd"
     else
         exit_distro_not_supported "amqp1 qpid installation"
     fi
@@ -380,11 +401,11 @@ function _install_amqp1_backend {
     _install_pyngus
 
     if [ "$AMQP1_RPC" == "qdrouterd" ]; then
-        install_package $_qdrouterd_package
+        install_package $qdrouterd_package
         _configure_qdr $AMQP1_RPC_TRANSPORT_URL
     fi
     if [ "$AMQP_NOTIFY" == "qpidd" ]; then
-        install_package qpidd
+        install_package qpidd_package
         _configure_qpid $AMQP1_NOTIFY_TRANSPORT_URL
     fi
 }
@@ -406,12 +427,14 @@ function _cleanup_amqp1_backend {
     if is_fedora; then
         if [ "$AMQP1_RPC" == "qdrouterd" ]; then
             uninstall_package qpid-dispatch-router
+        fi
         if [ "$AMQP1_NOTIFY" == "qpidd" ]; then
             uninstall_package qpid-cpp-server
         fi
     elif is_ubuntu; then
         if [ "$AMQP1_RPC" == "qdrouterd" ]; then
             uninstall_package qdrouterd
+        fi
         if [ "$AMQP1_NOTIFY" == "qpidd" ]; then
             uninstall_package qpidd
         fi
@@ -425,9 +448,13 @@ function _cleanup_amqp1_backend {
 
 # iniset configuration for amqp rpc_backend
 function _iniset_amqp1_backend {
-    local package=$1
-    local file=$2
-    local section=${3:-DEFAULT}
+    local package
+    local file
+    local section
+
+    package=$1
+    file=$2
+    section=${3:-DEFAULT}
 
     iniset $file $section transport_url $(get_transport_url)
     if [ "$AMQP1_NOTIFY" == "rabbit" ]; then
