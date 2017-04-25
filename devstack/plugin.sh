@@ -468,21 +468,21 @@ function _iniset_amqp1_backend {
 if is_service_enabled amqp1; then
 
     # for backward compatibility - generate the transport urls from the old env vars if not set
-    if [[ -z "$AMQP1_RPC_TRANSPORT" ]]; then
+    if [[ -z "$AMQP1_RPC_TRANSPORT_URL" ]]; then
         AMQP1_DEFAULT_PORT=${AMQP1_DEFAULT_PORT:=$([[ "$AMQP1_SERVICE" == "qpid" ]] && echo 5672 || echo 45672)}
         if [ -n "$AMQP1_USERNAME" ]; then
-            AMQP1_RPC_TRANSPORT="amqp://$AMQP1_USERNAME:$AMQP1_PASSWORD@$AMQP1_HOST:$AMQP1_DEFAULT_PORT"
+            AMQP1_RPC_TRANSPORT_URL="amqp://$AMQP1_USERNAME:$AMQP1_PASSWORD@$AMQP1_HOST:$AMQP1_DEFAULT_PORT"
         else
-            AMQP1_RPC_TRANSPORT="amqp://$AMQP1_HOST:$AMQP1_DEFAULT_PORT"
+            AMQP1_RPC_TRANSPORT_URL="amqp://$AMQP1_HOST:$AMQP1_DEFAULT_PORT"
         fi
     fi
 
-    if [[ -z "$AMQP1_NOTIFY_TRANSPORT" ]]; then
+    if [[ -z "$AMQP1_NOTIFY_TRANSPORT_URL" ]]; then
         AMQP1_NOTIFY_PORT=${AMQP1_NOTIFY_PORT:=5672}
         if [ -n "$AMQP1_USERNAME" ]; then
-            AMQP1_NOTIFY_TRANSPORT="amqp://$AMQP1_USERNAME:$AMQP1_PASSWORD@$AMQP1_HOST:$AMQP1_NOTIFY_PORT"
+            AMQP1_NOTIFY_TRANSPORT_URL="amqp://$AMQP1_USERNAME:$AMQP1_PASSWORD@$AMQP1_HOST:$AMQP1_NOTIFY_PORT"
         else
-            AMQP1_NOTIFY_TRANSPORT="amqp://$AMQP1_HOST:$AMQP1_NOTIFY_PORT"
+            AMQP1_NOTIFY_TRANSPORT_URL="amqp://$AMQP1_HOST:$AMQP1_NOTIFY_PORT"
         fi
     fi
 
