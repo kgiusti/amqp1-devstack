@@ -404,7 +404,7 @@ function _install_amqp1_backend {
         install_package $qdrouterd_package
         _configure_qdr $AMQP1_RPC_TRANSPORT_URL
     fi
-    if [ "$AMQP_NOTIFY" == "qpidd" ]; then
+    if [ "$AMQP1_NOTIFY" == "qpidd" ]; then
         install_package qpidd_package
         _configure_qpid $AMQP1_NOTIFY_TRANSPORT_URL
     fi
@@ -417,7 +417,7 @@ function _start_amqp1_backend {
     if [ "$AMQP1_RPC" == "qdrouterd" ]; then
         restart_service qdrouterd
     fi
-    if [ "$AMQP1_NOTIFY" == "qpid" ]; then
+    if [ "$AMQP1_NOTIFY" == "qpidd" ]; then
         restart_service qpidd
     fi
 }
