@@ -69,14 +69,14 @@ function _parse_transport_url {
     # parse out username + password if present:
     user=""
     passwd=""
-    if [[ "$userhostport" =~ .+@.+ ]]; then
+    if [[ "$uphp" =~ .+@.+ ]]; then
         local passhostport
-        user=$(echo $userhostport | sed -e "s#^\([^:]*\).*#\1#")
-        passhostport=$(echo $userhostport | sed -e "s#$user:##")
+        user=$(echo $uphp | sed -e "s#^\([^:]*\).*#\1#")
+        passhostport=$(echo $uphp | sed -e "s#$user:##")
         passwd=$(echo $passhostport | sed -e "s#^\([^@]*\).*#\1#")
         hostport=$(echo $passhostport | sed -e "s#$passwd@##")
     else
-        hostport=$userhostport
+        hostport=$uphp
     fi
     host=$(echo $hostport | cut -d: -f1)
     port=$(echo $hostport | cut -d: -f2)
