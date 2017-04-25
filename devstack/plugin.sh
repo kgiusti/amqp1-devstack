@@ -126,7 +126,7 @@ function _remove_pyngus {
 function _configure_qpid {
 
     local url
-    url=_parse_transport_url $1
+    url=$(_parse_transport_url $1)
 
     # the location of the configuration files have changed since qpidd 0.14
     local qpid_conf_file
@@ -230,7 +230,7 @@ EOF
 function _configure_qdr {
 
     local url
-    url=_parse_transport_url $1
+    url=$(_parse_transport_url $1)
 
     # the location of the configuration is /etc/qpid-dispatch
     local qdr_conf_file
