@@ -405,7 +405,7 @@ function _install_amqp1_backend {
         _configure_qdr $AMQP1_RPC_TRANSPORT_URL
     fi
     if [ "$AMQP1_NOTIFY" == "qpidd" ]; then
-        install_package qpidd_package
+        install_package $qpidd_package
         _configure_qpid $AMQP1_NOTIFY_TRANSPORT_URL
     fi
 }
