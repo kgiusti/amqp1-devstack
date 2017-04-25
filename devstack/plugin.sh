@@ -152,7 +152,7 @@ function _configure_qpid {
     echo "acl-file=$qpid_acl_file" | sudo tee $qpid_conf_file
 
     local username
-    username=$(echo url | cut -d' ' -f3)
+    username=$(echo "$url" | cut -d' ' -f3)
     if [ -z "$username" ]; then
         # no QPID user configured, so disable authentication
         # and access control
@@ -165,7 +165,7 @@ EOF
         # $username to the ACL:
         echo "auth=yes" | sudo tee --append $qpid_conf_file
         local passwd
-        passwd=$(echo url | cut -d' ' -f4)
+        passwd=$(echo "$url" | cut -d' ' -f4)
         if [ -z "$passwd" ]; then
             read_password password "ENTER A PASSWORD FOR QPID USER $username"
         fi
@@ -260,7 +260,7 @@ EOF
 
     # Create a listener for incoming connect to the router
     local port
-    port=$(echo url | cut -d' ' -f2)
+    port=$(echo "$url" | cut -d' ' -f2)
     cat <<EOF | sudo tee --append $qdr_conf_file
 listener {
     addr: 0.0.0.0
@@ -268,7 +268,7 @@ listener {
     role: normal
 EOF
     local username
-    username=$(echo url | cut -d' ' -f3)
+    username=$(echo "$url" | cut -d' ' -f3)
     if [ -z "$username" ]; then
         #no user configured, so disable authentication
         cat <<EOF | sudo tee --append $qdr_conf_file
@@ -279,7 +279,7 @@ EOF
     else
         # configure to use PLAIN authentication
         local passwd
-        passwd=$(echo url | cut -d' ' -f4)
+        passwd=$(echo "$url" | cut -d' ' -f4)
         if [ -z "$passwd" ]; then
             read_password passwd "ENTER A PASSWORD FOR QPID DISPATCH USER $username"
         fi
