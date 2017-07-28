@@ -96,6 +96,13 @@ function _get_amqp1_notify_transport_url {
     echo "$AMQP1_NOTIFY_TRANSPORT_URL"
 }
 
+# override the default in devstack as it forces all non-rabbit
+# backends to fail nova
+function _amqp1_add_vhost {
+    # yes, in fact we _do_ support vhosts...
+    return 0;
+}
+
 # install packages necessary for support of the oslo.messaging AMQP
 # 1.0 driver
 function _install_pyngus {
@@ -512,24 +519,37 @@ if is_service_enabled amqp1; then
             ;;
     esac
 
-    # Save rabbit get_transport_url for notifications if necessary
+    # Save rabbit get_transport_url and rpc_backend_add_vhost for
+    # notifications if necessary
     if [ ! $(type -t _get_rabbit_transport_url) ]; then
         get_transport_url_definition=$(declare -f get_transport_url)
         eval "_get_rabbit_transport_url() ${get_transport_url_definition#*\()}"
         export -f _get_rabbit_transport_url
     fi
 
-    # Note: this is the only tricky part about out of tree rpc plugins,
-    # you must overwrite the iniset_rpc_backend function so that when
-    # that's passed around the correct settings files are made.
+    if [ ! $(type -t _rabbit_rpc_backend_add_vhost) ]; then
+        rpc_backend_add_vhost_definition=$(declare -f rpc_backend_add_vhost)
+        eval "_rabbit_rpc_backend_add_vhost() ${rpc_backend_add_vhost_definition#*\()}"
+        export -f _rabbit_rpc_backend_add_vhost
+    fi
+
+    # override the rabbit specific calls in devstack for amqp1 support
     function iniset_rpc_backend {
         _iniset_amqp1_backend $@
     }
     function get_transport_url {
         _get_amqp1_default_transport_url $@
     }
+    function rpc_backend_add_vhost {
+        _amqp1_add_vhost
+        if is_service_enabled rabbit; then
+            _rabbit_rpc_backend_add_vhost $@
+        fi
+    }
+
     export -f iniset_rpc_backend
     export -f get_transport_url
+    export -f rpc_backend_add_vhost
 
     if [[ "$1" == "stack" && "$2" == "pre-install" ]]; then
         # nothing needed here
