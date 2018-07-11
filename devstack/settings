@@ -1,7 +1,0 @@
-enable_service amqp1
-AMQP1_SERVICE=${AMQP1_SERVICE:-qpid}
-AMQP1_HOST=${AMQP1_HOST:-$SERVICE_HOST}
-
-if [ "$AMQP1_SERVICE" != "qpid-hybrid" ]; then
-    disable_service rabbit
-fi
